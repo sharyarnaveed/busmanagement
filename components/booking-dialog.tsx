@@ -48,6 +48,11 @@ export function BookingDialog({
 
   const onFormSubmit = async (data: BookingFormData) => {
     if (!seat) return;
+    // Prevent males from booking seats in first 4 rows (seat id 1-20)
+    if (seat.id >= 1 && seat.id <= 20 && data.gender === "male") {
+      alert("Only females can book seats in the first 4 rows.");
+      return;
+    }
     try {
       const res = await fetch("/api/bookseat", {
         method: "POST",
@@ -56,8 +61,8 @@ export function BookingDialog({
       });
       const result = await res.json();
       if (res.ok && result.success) {
-        // Optionally call parent onSubmit
-        onSubmit(seat.id, data);
+        // Call parent onSubmit to refetch seat data
+        await onSubmit(seat.id, data);
         reset();
         onOpenChange(false);
       } else {

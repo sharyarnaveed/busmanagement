@@ -166,11 +166,11 @@ export default function UserHomePage() {
               type: "error",
               message: "Only females can book seats in the first 4 rows.",
             });
-            setDialogOpen(false);
             setTimeout(() => setAlert(null), 3000);
             return;
           }
           await handleBooking(seatId, data);
+          setDialogOpen(false);
         }}
       />
     </div>
