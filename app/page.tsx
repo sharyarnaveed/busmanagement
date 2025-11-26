@@ -62,7 +62,7 @@ export default function UserHomePage() {
         type: "error",
         message: "This seat is already booked. Please select another seat.",
       });
-      setTimeout(() => setAlert(null), 3000);
+      setTimeout(() => setAlert(null), 7000);
       return;
     }
     // Check if seat is in first 4 rows (seat id 1-20)
