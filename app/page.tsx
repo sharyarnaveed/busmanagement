@@ -1,65 +1,178 @@
-import Image from "next/image";
+"use client";
 
-export default function Home() {
+import { useState, useEffect } from "react";
+import type { BookingFormData, Seat } from "@/lib/types";
+
+// Extend Seat type to include restrictedRow
+type SeatWithRestriction = import("@/lib/types").Seat & {
+  restrictedRow?: boolean;
+};
+import { getSeats, bookSeat } from "@/lib/store";
+import { SeatGrid } from "@/components/seat-grid";
+import { BookingDialog } from "@/components/booking-dialog";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Bus, CheckCircle2, XCircle, Settings } from "lucide-react";
+import Link from "next/link";
+export default function UserHomePage() {
+  const [seats, setSeats] = useState<Seat[]>([]);
+  const [selectedSeat, setSelectedSeat] = useState<SeatWithRestriction | null>(
+    null
+  );
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [alert, setAlert] = useState<{
+    type: "success" | "error";
+    message: string;
+  } | null>(null);
+
+  // Fetch seats from API
+  useEffect(() => {
+    const fetchSeats = async () => {
+      const res = await fetch("/api/getseats");
+      const result = await res.json();
+      // Map API data to Seat[]
+      const bookedSeats: Seat[] = (result.seats || []).map((s: any) => ({
+        id: s.seatno,
+        isBooked: !!s.fullname,
+        passengerName: s.fullname || undefined,
+        registrationNo: s.regno || undefined,
+        gender: s.gender || undefined,
+      }));
+      // Fill remaining seats as available
+      const totalSeats = 55;
+      const seatsArr: Seat[] = Array.from({ length: totalSeats }, (_, i) => {
+        const booked = bookedSeats.find((bs) => bs.id === i + 1);
+        return booked || { id: i + 1, isBooked: false };
+      });
+      setSeats(seatsArr);
+    };
+    fetchSeats();
+  }, []);
+
+  const handleSeatClick = (seat: Seat) => {
+    if (seat.isBooked) {
+      setAlert({
+        type: "error",
+        message: "This seat is already booked. Please select another seat.",
+      });
+      setTimeout(() => setAlert(null), 3000);
+      return;
+    }
+    // Check if seat is in first 4 rows (seat id 1-20)
+    if (seat.id >= 1 && seat.id <= 20) {
+      // When opening dialog, store seat and check gender on submit
+      setSelectedSeat({ ...seat, restrictedRow: true });
+    } else {
+      setSelectedSeat({ ...seat, restrictedRow: false });
+    }
+    setDialogOpen(true);
+  };
+
+  // After booking, refetch seats
+  const handleBooking = async (seatId: number, data: BookingFormData) => {
+    // Booking is handled by API in BookingDialog
+    // Just refetch seats after booking
+    const res = await fetch("/api/getseats");
+    const result = await res.json();
+    const bookedSeats: Seat[] = (result.seats || []).map((s: any) => ({
+      id: s.seatno,
+      isBooked: !!s.fullname,
+      passengerName: s.fullname || undefined,
+      registrationNo: s.regno || undefined,
+      gender: s.gender || undefined,
+    }));
+    const totalSeats = 55;
+    const seatsArr: Seat[] = Array.from({ length: totalSeats }, (_, i) => {
+      const booked = bookedSeats.find((bs) => bs.id === i + 1);
+      return booked || { id: i + 1, isBooked: false };
+    });
+    setSeats(seatsArr);
+    setAlert({
+      type: "success",
+      message: `Seat #${seatId} has been successfully booked!`,
+    });
+    setTimeout(() => setAlert(null), 3000);
+  };
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <div className="min-h-screen bg-background">
+      {/* Header */}
+      <header className="border-b bg-card">
+        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Bus className="w-6 h-6 text-primary" />
+            <h1 className="text-xl font-bold">Bus Booking</h1>
+          </div>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
+      </header>
+
+      <main className="container mx-auto px-4 py-8">
+        {/* Alert */}
+        {alert && (
+          <div className="mb-6">
+            <Alert
+              variant={alert.type === "error" ? "destructive" : "default"}
+              className={
+                alert.type === "success" ? "border-green-500 bg-green-50" : ""
+              }
+            >
+              {alert.type === "success" ? (
+                <CheckCircle2 className="h-4 w-4 text-green-600" />
+              ) : (
+                <XCircle className="h-4 w-4" />
+              )}
+              <AlertTitle>
+                {alert.type === "success" ? "Success" : "Seat Already Booked"}
+              </AlertTitle>
+              <AlertDescription>{alert.message}</AlertDescription>
+            </Alert>
+          </div>
+        )}
+
+        {/* Seat Selection */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Select Your Seat</CardTitle>
+            <CardDescription>
+              Click on an available seat (gray) to book it
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <SeatGrid seats={seats} onSeatClick={handleSeatClick} />
+          </CardContent>
+        </Card>
       </main>
+
+      {/* Booking Dialog */}
+      <BookingDialog
+        seat={selectedSeat}
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        onSubmit={async (seatId, data) => {
+          // Prevent males from booking seats in first 4 rows
+          if (
+            selectedSeat &&
+            selectedSeat.restrictedRow &&
+            data.gender === "male"
+          ) {
+            setAlert({
+              type: "error",
+              message: "Only females can book seats in the first 4 rows.",
+            });
+            setDialogOpen(false);
+            setTimeout(() => setAlert(null), 3000);
+            return;
+          }
+          await handleBooking(seatId, data);
+        }}
+      />
     </div>
   );
 }
