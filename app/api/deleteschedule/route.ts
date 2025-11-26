@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import supabase from "@/lib/SupbaseClient"
 
-export async function DELETE() {
+export async function GET() {
   // Find seats older than 4 hours
   const fourHoursAgo = new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString()
   // Delete all seats created before fourHoursAgo
